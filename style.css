@@ -1,0 +1,120 @@
+*{
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root{
+    --white: #fafafb;
+    --purple: #9a67ea;
+    --blue-light: #04d4c3;
+    --blue-dark: #2a73c2;
+    --green: #2c7b90;
+}
+
+.container{
+    max-width: 80%;
+    width: 400px;
+    height: 600px;
+    margin: 0 auto;
+}
+
+body{
+    background: linear-gradient(to bottom,var(--purple),var(--blue-light));
+    height: 100vh;
+}
+
+/*PERFIL*/
+
+.perfil h1{
+    color: var(--white);
+    padding: 25px;
+}
+
+.perfil span{
+    color: var(--white);
+    letter-spacing: 1px;
+    padding: 25px;
+    margin-bottom: 20px;
+}
+
+#fecha{
+    color: var(--white);
+    padding: 50px 0 5px 0;
+}
+
+/*AGREGAR TAREA*/
+
+.agregarTareas{
+    background-color: var(--white);
+    border-radius: 15px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    gap: 70px;
+    margin: 40px 0;
+}
+
+.agregarTareas input{
+    width: 90%;
+    height: 90%;
+    border-radius: 8px;
+    border: none;
+    background-color: var(--white);
+    padding: 20px;
+    
+}
+
+.agregarTareas span{
+    width: 50px; /* si utilizas iconos utilizar font-size*/
+    color: var(--white);
+    background:var(--purple);
+    border-radius: 30%;
+}
+
+.agregarTareas span:hover{
+    transform: scale(1.1);
+    cursor: pointer;
+}
+
+.agregarTareas input::placeholder{
+    font-size: 1.1rem;
+    color: var(--purple);
+}
+
+/*SECCION TAREAS*/
+
+.seccionTareas h3{
+    color: var(--white);
+    margin-bottom: 20px;
+}
+
+.seccionTareas li{
+    display: flex;
+    background: linear-gradient(to bottom,var(--blue-dark),var(--green));
+    border-radius: 15px;
+    padding: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin: 5px 0;
+}
+
+.seccionTareas span{
+    width: 25px;
+}
+
+.seccionTareas span:hover{
+    color: var(--blue-light);
+    cursor: pointer;
+}
+
+.seccionTareas > ul p{
+    font-size: 1.2rem;
+}
+
+.line-through{
+    text-decoration: line-through;
+    color: var(--blue-light);
+}
+
