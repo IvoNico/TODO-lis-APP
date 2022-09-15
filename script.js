@@ -7,10 +7,8 @@ const fecha = document.querySelector('#fecha')
 const check = 'fa-check-circle'
 const uncheck = 'fa-circle'
 const lineThrough = 'line-through'
-let id = 0
-const list = []
-
-
+let id 
+let list 
 // fecha
 
 const date = new Date();
@@ -64,6 +62,7 @@ btnSend.addEventListener('click', ()=>{
 
         })
     }
+    localStorage.setItem('TODO', JSON.stringify(list))
     inputTarea.value = ''
     id++
 })
@@ -80,6 +79,7 @@ document.addEventListener('keyup', function(event){ //se utiliza para activar la
                 eliminado: false
             })
         }
+        localStorage.setItem('TODO', JSON.stringify(list))
         inputTarea.value=''
         id++
     }
@@ -93,4 +93,23 @@ listaTareas.addEventListener('click', function(event){
     }else if(elementData === 'eliminado'){
         tareaEliminada(element)
     }
+    localStorage.setItem('TODO', JSON.stringify(list)) //cada ves que se actualice la informacion la vamos a guardar en el localStorage
 })
+
+//Local storage getItem
+
+let data = localStorage.getItem('TODO')
+if(data){
+    list = JSON.parse(data)
+    id = list.lenght
+    cargarLista(list)
+}else{
+    list=[]
+    id=0
+}
+
+function cargarLista(DATA) {
+    DATA.forEach(function(i){
+        agregarTarea(i.nombre,i.id,i.realizado,i.eliminado)
+    });
+}
