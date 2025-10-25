@@ -1,115 +1,183 @@
-//info date
+// === Todo con memoria por día + progreso ===
 
-const btnSend = document.querySelector('#enter')
-const inputTarea = document.querySelector('#input')
-const listaTareas = document.querySelector('#lista')
-const fecha = document.querySelector('#fecha')
-const check = 'fa-check-circle'
-const uncheck = 'fa-circle'
-const lineThrough = 'line-through'
-let id 
-let list 
-// fecha
+// Selectores base
+const btnSend       = document.querySelector('#enter');
+const inputTarea    = document.querySelector('#input');
+const listaTareas   = document.querySelector('#lista');
+const fechaLabel    = document.querySelector('#fecha');
+const datePicker    = document.querySelector('#datePicker');
+const prevDayBtn    = document.querySelector('#prevDay');
+const nextDayBtn    = document.querySelector('#nextDay');
+const progressBar   = document.querySelector('#progressBar');
+const progressText  = document.querySelector('#progressText');
 
-const date = new Date();
-fecha.innerHTML = date.toLocaleDateString('es-ES', {weekday:'long',month:'short', day:'numeric'})
+// Utilidades de fecha
+const pad = (n) => String(n).padStart(2,'0');
+const keyFromDate = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const dateFromKey = (k) => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
 
-//funcion agregar tarea
+// Almacenamiento por día
+const STORAGE_KEY = 'TODO_BY_DATE_V2';
+let STATE = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+let CURRENT_KEY = keyFromDate(new Date());
 
-function agregarTarea (tarea, id, realizado, eliminado){
-    if(eliminado){
-        return
+// Inicializa datePicker y cabecera
+datePicker.value = CURRENT_KEY;
+updateFechaLabel();
+
+// Lista activa del día
+let list = ensureList();
+render();
+
+// ================== Funciones ==================
+function ensureList(){
+  if(!Array.isArray(STATE[CURRENT_KEY])) STATE[CURRENT_KEY] = [];
+  return STATE[CURRENT_KEY];
+}
+function save(){
+  STATE[CURRENT_KEY] = list;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+}
+function updateFechaLabel(){
+  const d = dateFromKey(CURRENT_KEY);
+  fechaLabel.textContent = d.toLocaleDateString('es-ES', { weekday:'long', month:'short', day:'numeric' });
+}
+function escapeHtml(str){
+  return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+// Renderiza una tarea (no elimina al completar)
+function agregarTarea(tarea, id, realizado){
+  const LINE = realizado ? 'line-through' : '';
+  const DONE = realizado ? 'done' : '';
+  const item = `
+    <li class="${DONE}" data-id="${id}">
+      <button class="check"  data-action="toggle" data-id="${id}" aria-label="Completar"></button>
+      <p class="text ${LINE}">${escapeHtml(tarea)}</p>
+      <button class="delete" data-action="delete" data-id="${id}" aria-label="Eliminar"></button>
+    </li>`;
+  listaTareas.insertAdjacentHTML('beforeend', item);
+}
+
+function render(){
+  listaTareas.innerHTML = '';
+  list.filter(t => !t.eliminado).forEach(t => {
+    agregarTarea(t.nombre, t.id, t.realizado);
+  });
+  updateProgress();
+}
+
+function updateProgress(){
+  const total = list.filter(t => !t.eliminado).length;
+  const done  = list.filter(t => !t.eliminado && t.realizado).length;
+  const pct   = total ? Math.round((done / total) * 100) : 0;
+  progressBar.style.width = `${pct}%`;
+  progressText.textContent = `${pct}% • ${done}/${total}`;
+}
+
+function addFromInput(){
+  const tarea = inputTarea.value.trim();
+  if(!tarea) return;
+
+  const id = (crypto.randomUUID ? crypto.randomUUID() :
+             `${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`);
+
+  const task = { id, nombre: tarea, realizado: false, eliminado: false, createdAt: Date.now() };
+  list.push(task);
+  agregarTarea(task.nombre, task.id, task.realizado);
+  inputTarea.value = '';
+  save();
+  updateProgress();
+}
+
+function toggleTask(id){
+  const idx = list.findIndex(t => t.id === id);
+  if(idx === -1) return;
+  list[idx].realizado = !list[idx].realizado;
+
+  const li = listaTareas.querySelector(`li[data-id="${id}"]`);
+  if(!li) return;
+  li.classList.toggle('done', list[idx].realizado);
+  li.querySelector('.text').classList.toggle('line-through', list[idx].realizado);
+
+  save();
+  updateProgress();
+}
+
+function deleteTask(id){
+  const idx = list.findIndex(t => t.id === id);
+  if(idx === -1) return;
+  list[idx].eliminado = true;
+
+  const li = listaTareas.querySelector(`li[data-id="${id}"]`);
+  if(li){
+    li.classList.add('remove');
+    li.addEventListener('animationend', () => {
+      li.remove();
+      updateProgress();
+    }, { once:true });
+  }
+  save();
+}
+
+// ================== Eventos ==================
+btnSend.addEventListener('click', addFromInput);
+inputTarea.addEventListener('keyup', (e) => { if(e.key === 'Enter') addFromInput(); });
+
+listaTareas.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if(!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+  if(action === 'toggle') toggleTask(id);
+  if(action === 'delete') deleteTask(id);
+});
+
+// Navegación por días
+datePicker.addEventListener('change', () => {
+  CURRENT_KEY = datePicker.value;
+  list = ensureList();
+  updateFechaLabel();
+  render();
+});
+
+prevDayBtn.addEventListener('click', () => {
+  const d = dateFromKey(CURRENT_KEY); d.setDate(d.getDate() - 1);
+  CURRENT_KEY = keyFromDate(d);
+  datePicker.value = CURRENT_KEY;
+  list = ensureList();
+  updateFechaLabel();
+  render();
+});
+
+nextDayBtn.addEventListener('click', () => {
+  const d = dateFromKey(CURRENT_KEY); d.setDate(d.getDate() + 1);
+  CURRENT_KEY = keyFromDate(d);
+  datePicker.value = CURRENT_KEY;
+  list = ensureList();
+  updateFechaLabel();
+  render();
+});
+
+// ================== Migración opcional del localStorage viejo ==================
+(function migrateOld(){
+  const legacy = localStorage.getItem('TODO');
+  if(!legacy) return;
+  try {
+    const arr = JSON.parse(legacy);
+    if(Array.isArray(arr)){
+      const today = keyFromDate(new Date());
+      if(!Array.isArray(STATE[today])) STATE[today] = [];
+      STATE[today].push(...arr.map(x => ({
+        id: (x.id?.toString()) || `${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+        nombre: x.nombre ?? 'Tarea',
+        realizado: !!x.realizado,
+        eliminado: !!x.eliminado,
+        createdAt: Date.now()
+      })));
+      localStorage.removeItem('TODO');
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+      if(CURRENT_KEY === today){ list = STATE[today]; render(); }
     }
-
-    const REALIZADO = realizado ? check : uncheck
-    const LINE = realizado ? lineThrough : ''
-
-    const elemento =  `
-        <li id="elemento">
-            <span class="${REALIZADO}" data="realizado" id="${id}">O</span>
-            <p class="text ${LINE}"> ${tarea} </p>
-            <span  data="eliminado" id="${id}">X</span>
-        </li>`
-    
-    listaTareas.insertAdjacentHTML("afterbegin", elemento) //indicamos que inserte el elemento html
-}
-
-//funcion tarea realizada
-
-function tareaRealizada(element){
-    element.classList.toggle(check) //indicamos con toggle que coloque la clase que no este activa
-    element.classList.toggle(uncheck)
-    element.parentNode.querySelector('.text').classList.toggle(lineThrough) //parentNode identifica los elementos hijos
-    list[element.id].realizado = list[element.id].realizado ? false : true
-}
-
-//funcion eliminar tarea
-
-function tareaEliminada(element){
-    element.parentNode.parentNode.removeChild(element.parentNode) //indicamos que elimine el elemento hijo en este caso el LI.
-    list[element.id].eliminado = true
-}
-
-btnSend.addEventListener('click', ()=>{
-    const tarea = inputTarea.value 
-    if(tarea){
-        agregarTarea(tarea, id, false, false)
-        list.push({
-            nombre: tarea,
-            id: id,
-            realizado: false,
-            eliminado: false
-
-        })
-    }
-    localStorage.setItem('TODO', JSON.stringify(list))
-    inputTarea.value = ''
-    id++
-})
-
-document.addEventListener('keyup', function(event){ //se utiliza para activar la funcion ENTER para enviar la información
-    if(event.key=='Enter'){
-        const tarea = inputTarea.value
-        if(tarea){
-            agregarTarea(tarea, id, false, false)
-            list.push({
-                nombre: tarea,
-                id: id,
-                realizado: false,
-                eliminado: false
-            })
-        }
-        localStorage.setItem('TODO', JSON.stringify(list))
-        inputTarea.value=''
-        id++
-    }
-})
-
-listaTareas.addEventListener('click', function(event){
-    const element = event.target
-    const elementData = element.attributes.data.value
-    if(elementData === 'realizado'){
-        tareaRealizada(element)
-    }else if(elementData === 'eliminado'){
-        tareaEliminada(element)
-    }
-    localStorage.setItem('TODO', JSON.stringify(list)) //cada ves que se actualice la informacion la vamos a guardar en el localStorage
-})
-
-//Local storage getItem
-
-let data = localStorage.getItem('TODO')
-if(data){
-    list = JSON.parse(data)
-    id = list.lenght
-    cargarLista(list)
-}else{
-    list=[]
-    id=0
-}
-
-function cargarLista(DATA) {
-    DATA.forEach(function(i){
-        agregarTarea(i.nombre,i.id,i.realizado,i.eliminado)
-    });
-}
+  } catch(e) { /* ignore */ }
+})();
