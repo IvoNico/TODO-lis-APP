@@ -1,33 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
-    <title>TO DO LIST</title>
-</head>
-<body>
-    <main class="container">
-        <section class="perfil">
-            <div id="fecha"></div>
-            <h1>¡Hola, organicemos tu día!</h1>
-            <span>Vamos  a cumplir tus metas</span>
-        </section>
-        
-        <section class="tareas">
-            <div class="agregarTareas">
-                <input type="text" id="input" placeholder="agregar nueva tarea">
-                <button type="button" id="enter">+</button>
-            </div>
-            <div class="seccionTareas">
-                <h3>Estas son tus tareas pendientes</h3>
-                <ul id="lista">
-                </ul>
-            </div>
-        </section>
-    </main>
+<div class="container">
+  <header class="perfil">
+    <h1>Mi Todo</h1>
+    <span id="fecha"></span>
+    <!-- Controles de fecha -->
+    <div class="date-controls">
+      <button id="prevDay" class="icon-btn" aria-label="Día anterior">◀</button>
+      <input type="date" id="datePicker" />
+      <button id="nextDay" class="icon-btn" aria-label="Día siguiente">▶</button>
+    </div>
+  </header>
 
-    <script src="script.js"></script>
-</body>
-</html>
+  <!-- Progreso del día -->
+  <div class="progress">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <div class="progress-meta">
+    <span id="progressText">0% • 0/0</span>
+  </div>
+
+  <!-- Agregar tarea -->
+  <div class="agregarTareas">
+    <input id="input" type="text" placeholder="Escribe una tarea..." />
+    <button id="enter" class="add-btn" aria-label="Añadir">+</button>
+  </div>
+
+  <!-- Lista -->
+  <section class="seccionTareas">
+    <h3>Tareas</h3>
+    <ul id="lista"></ul>
+  </section>
+</div>
