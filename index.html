@@ -1,33 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
+<!doctype html>
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
-    <title>TO DO LIST</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mi Todo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#0b0d12; --card:#0f172a; --stroke:#1f2a44;
+  --text:#e5e7eb; --muted:#9aa6bf;
+  --blue:#2563eb; --blue-500:#3b82f6;
+  --e:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+.container{width:min(420px,90vw);margin:40px auto}
+.perfil h1{font-size:1.5rem;margin-bottom:6px}
+#fecha{color:var(--muted);display:block;margin-bottom:8px;text-transform:capitalize}
+.date-controls{display:flex;gap:8px;align-items:center;margin:8px 0 14px}
+.date-controls input[type="date"]{background:var(--card);border:1px solid var(--stroke);color:var(--text);padding:8px 10px;border-radius:10px;outline:none}
+.icon-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--stroke);background:var(--card);color:var(--text);cursor:pointer;transition:transform .2s var(--e),border-color .2s var(--e)}
+.icon-btn:hover{transform:translateY(-1px);border-color:var(--blue)}
+.progress{height:10px;background:var(--card);border:1px solid var(--stroke);border-radius:999px;overflow:hidden}
+.progress-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),#60a5fa);transition:width .3s var(--e)}
+.progress-meta{color:var(--muted);font-size:.85rem;margin:6px 0 14px}
+.agregarTareas{display:flex;gap:10px;align-items:center;padding:8px;background:var(--card);border:1px solid var(--stroke);border-radius:14px;margin-bottom:14px}
+.agregarTareas input{flex:1;height:44px;background:transparent;border:0;color:var(--text);padding:0 12px;outline:none}
+.add-btn{width:44px;height:44px;border-radius:12px;border:0;background:var(--blue);color:#fff;font-size:28px;line-height:0;cursor:pointer;transition:transform .2s var(--e),background .2s var(--e)}
+.add-btn:hover{background:var(--blue-500);transform:translateY(-1px)}
+.seccionTareas h3{font-size:1rem;margin:10px 0}
+.seccionTareas>ul{list-style:none;display:grid;gap:10px}
+.seccionTareas li{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:12px;padding:12px;border:1px solid var(--stroke);border-radius:14px;background:linear-gradient(180deg,#0b1324,#0b0f1a);transition:border-color .2s var(--e),transform .2s var(--e),opacity .2s var(--e)}
+.seccionTareas li:hover{border-color:#2d4e94;transform:translateY(-1px)}
+.seccionTareas p{font-size:.98rem;line-height:1.3}
+.check,.delete{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;cursor:pointer;position:relative;border:0;background:transparent}
+.check{border:2px solid #334155;transition:all .28s var(--e)}
+.check::after{content:"";position:absolute;width:12px;height:6px;border:2px solid transparent;border-top:0;border-right:0;transform:rotate(-45deg) scale(.6);top:7px;left:6px;opacity:0;transition:transform .28s var(--e),opacity .28s var(--e),border-color .28s var(--e)}
+.delete{opacity:.75}
+.delete::before,.delete::after{content:"";position:absolute;width:12px;height:2px;background:#9aa6bf;top:13px;left:8px;border-radius:1px}
+.delete::before{transform:rotate(45deg)}.delete::after{transform:rotate(-45deg)}
+.delete:hover{opacity:1}
+li.done .check{background:var(--blue);border-color:var(--blue);box-shadow:0 0 0 6px rgba(37,99,235,.16)}
+li.done .check::after{border-color:#fff;opacity:1;transform:rotate(-45deg) scale(1)}
+.line-through{text-decoration:line-through;color:var(--muted)}
+li.remove{animation:slideOut .22s var(--e) forwards}
+@keyframes slideOut{to{transform:translateX(-12px);opacity:0}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
 </head>
 <body>
-    <main class="container">
-        <section class="perfil">
-            <div id="fecha"></div>
-            <h1>¡Hola, organicemos tu día!</h1>
-            <span>Vamos  a cumplir tus metas</span>
-        </section>
-        
-        <section class="tareas">
-            <div class="agregarTareas">
-                <input type="text" id="input" placeholder="agregar nueva tarea">
-                <button type="button" id="enter">+</button>
-            </div>
-            <div class="seccionTareas">
-                <h3>Estas son tus tareas pendientes</h3>
-                <ul id="lista">
-                </ul>
-            </div>
-        </section>
-    </main>
+  <div class="container">
+    <header class="perfil">
+      <h1>Mi Todo</h1>
+      <span id="fecha"></span>
+      <div class="date-controls">
+        <button id="prevDay" class="icon-btn" aria-label="Día anterior">◀</button>
+        <input type="date" id="datePicker" />
+        <button id="nextDay" class="icon-btn" aria-label="Día siguiente">▶</button>
+      </div>
+    </header>
 
-    <script src="script.js"></script>
+    <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="progress-meta"><span id="progressText">0% • 0/0</span></div>
+
+    <div class="agregarTareas">
+      <input id="input" type="text" placeholder="Escribe una tarea..." />
+      <button id="enter" class="add-btn" type="button" aria-label="Añadir">+</button>
+    </div>
+
+    <section class="seccionTareas">
+      <h3>Tareas</h3>
+      <ul id="lista" aria-live="polite"></ul>
+    </section>
+  </div>
+
+<script>
+// ==== Todo con memoria por día + progreso (standalone) ====
+const $ = (s,sc=document)=>sc.querySelector(s);
+const btnSend=$('#enter'), inputTarea=$('#input'), listaTareas=$('#lista');
+const fechaLabel=$('#fecha'), datePicker=$('#datePicker'), prevDayBtn=$('#prevDay'), nextDayBtn=$('#nextDay');
+const progressBar=$('#progressBar'), progressText=$('#progressText');
+
+// Utilidades de fecha
+const pad=n=>String(n).padStart(2,'0');
+const keyFromDate=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const dateFromKey=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d)};
+
+// Storage por día
+const STORAGE_KEY='TODO_BY_DATE_V2';
+let STATE=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
+let CURRENT_KEY=keyFromDate(new Date());
+datePicker.value=CURRENT_KEY;
+updateFechaLabel();
+
+let list=ensureList();
+render();
+
+function ensureList(){ if(!Array.isArray(STATE[CURRENT_KEY])) STATE[CURRENT_KEY]=[]; return STATE[CURRENT_KEY]; }
+function save(){ STATE[CURRENT_KEY]=list; localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); }
+function updateFechaLabel(){
+  const d=dateFromKey(CURRENT_KEY);
+  fechaLabel.textContent=d.toLocaleDateString('es-ES',{weekday:'long',month:'short',day:'numeric'});
+}
+function escapeHtml(str){return str.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function agregarTarea(tarea,id,realizado){
+  const LINE=realizado?'line-through':'', DONE=realizado?'done':'';
+  const item=`<li class="${DONE}" data-id="${id}">
+    <button class="check" data-action="toggle" data-id="${id}" aria-label="Completar"></button>
+    <p class="text ${LINE}">${escapeHtml(tarea)}</p>
+    <button class="delete" data-action="delete" data-id="${id}" aria-label="Eliminar"></button>
+  </li>`;
+  listaTareas.insertAdjacentHTML('beforeend',item);
+}
+function render(){
+  listaTareas.innerHTML='';
+  list.filter(t=>!t.eliminado).forEach(t=>agregarTarea(t.nombre,t.id,t.realizado));
+  updateProgress();
+}
+function updateProgress(){
+  const total=list.filter(t=>!t.eliminado).length;
+  const done=list.filter(t=>!t.eliminado&&t.realizado).length;
+  const pct=total?Math.round(done/total*100):0;
+  progressBar.style.width=`${pct}%`;
+  progressText.textContent=`${pct}% • ${done}/${total}`;
+}
+function addFromInput(){
+  const tarea=inputTarea.value.trim();
+  if(!tarea) return;
+  const id=(crypto.randomUUID?crypto.randomUUID():`${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`);
+  const task={id,nombre:tarea,realizado:false,eliminado:false,createdAt:Date.now()};
+  list.push(task);
+  agregarTarea(task.nombre,task.id,task.realizado);
+  inputTarea.value='';
+  save(); updateProgress();
+}
+function toggleTask(id){
+  const i=list.findIndex(t=>t.id===id); if(i===-1) return;
+  list[i].realizado=!list[i].realizado;
+  const li=listaTareas.querySelector(`li[data-id="${id}"]`);
+  if(li){
+    li.classList.toggle('done',list[i].realizado);
+    li.querySelector('.text').classList.toggle('line-through',list[i].realizado);
+  }
+  save(); updateProgress();
+}
+function deleteTask(id){
+  const i=list.findIndex(t=>t.id===id); if(i===-1) return;
+  list[i].eliminado=true;
+  const li=listaTareas.querySelector(`li[data-id="${id}"]`);
+  if(li){ li.classList.add('remove'); li.addEventListener('animationend',()=>{ li.remove(); updateProgress(); },{once:true}); }
+  save();
+}
+// Eventos
+btnSend.addEventListener('click',addFromInput);
+inputTarea.addEventListener('keyup',e=>{if(e.key==='Enter') addFromInput();});
+listaTareas.addEventListener('click',e=>{
+  const btn=e.target.closest('[data-action]'); if(!btn) return;
+  const id=btn.dataset.id, action=btn.dataset.action;
+  if(action==='toggle') toggleTask(id);
+  if(action==='delete') deleteTask(id);
+});
+// Navegación por días
+datePicker.addEventListener('change',()=>{ CURRENT_KEY=datePicker.value; list=ensureList(); updateFechaLabel(); render(); });
+prevDayBtn.addEventListener('click',()=>{ const d=dateFromKey(CURRENT_KEY); d.setDate(d.getDate()-1); CURRENT_KEY=keyFromDate(d); datePicker.value=CURRENT_KEY; list=ensureList(); updateFechaLabel(); render(); });
+nextDayBtn.addEventListener('click',()=>{ const d=dateFromKey(CURRENT_KEY); d.setDate(d.getDate()+1); CURRENT_KEY=keyFromDate(d); datePicker.value=CURRENT_KEY; list=ensureList(); updateFechaLabel(); render(); });
+// (Opcional) Migración de storage viejo
+(function migrateOld(){
+  const legacy=localStorage.getItem('TODO'); if(!legacy) return;
+  try{
+    const arr=JSON.parse(legacy);
+    if(Array.isArray(arr)){
+      const today=keyFromDate(new Date());
+      if(!Array.isArray(STATE[today])) STATE[today]=[];
+      STATE[today].push(...arr.map(x=>({
+        id:(x.id?.toString())||`${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+        nombre:x.nombre??'Tarea',
+        realizado:!!x.realizado,
+        eliminado:!!x.eliminado,
+        createdAt:Date.now()
+      })));
+      localStorage.removeItem('TODO');
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(STATE));
+      if(CURRENT_KEY===today){ list=STATE[today]; render(); }
+    }
+  }catch(e){}
+})();
+</script>
 </body>
+</html>
+
 </html>
