@@ -80,117 +80,224 @@ li.remove{animation:slideOut .22s var(--e) forwards}
   </div>
 
 <script>
-// ==== Todo con memoria por día + progreso (standalone) ====
-const $ = (s,sc=document)=>sc.querySelector(s);
-const btnSend=$('#enter'), inputTarea=$('#input'), listaTareas=$('#lista');
-const fechaLabel=$('#fecha'), datePicker=$('#datePicker'), prevDayBtn=$('#prevDay'), nextDayBtn=$('#nextDay');
-const progressBar=$('#progressBar'), progressText=$('#progressText');
+// === Todo con memoria por día + progreso + arrastre automático real + pendientes arriba (V3) ===
 
-// Utilidades de fecha
-const pad=n=>String(n).padStart(2,'0');
-const keyFromDate=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-const dateFromKey=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d)};
+// -------------------- Selectores --------------------
+const $ = (q,ctx=document)=>ctx.querySelector(q);
+const btnSend       = $('#enter');
+const inputTarea    = $('#input');
+const listaTareas   = $('#lista');
+const fechaLabel    = $('#fecha');
+const datePicker    = $('#datePicker');
+const prevDayBtn    = $('#prevDay');
+const nextDayBtn    = $('#nextDay');
+const progressBar   = $('#progressBar');
+const progressText  = $('#progressText');
 
-// Storage por día
-const STORAGE_KEY='TODO_BY_DATE_V2';
-let STATE=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
-let CURRENT_KEY=keyFromDate(new Date());
-datePicker.value=CURRENT_KEY;
-updateFechaLabel();
+// -------------------- Fechas --------------------
+const pad = n => String(n).padStart(2,'0');
+const keyFromDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const dateFromKey = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
+const newId = () => (crypto?.randomUUID ? crypto.randomUUID()
+                 : `${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`);
 
-let list=ensureList();
-render();
+// -------------------- Storage --------------------
+const STORAGE_KEY = 'TODO_BY_DATE_V3';
+let STATE = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
 
-function ensureList(){ if(!Array.isArray(STATE[CURRENT_KEY])) STATE[CURRENT_KEY]=[]; return STATE[CURRENT_KEY]; }
-function save(){ STATE[CURRENT_KEY]=list; localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); }
-function updateFechaLabel(){
-  const d=dateFromKey(CURRENT_KEY);
-  fechaLabel.textContent=d.toLocaleDateString('es-ES',{weekday:'long',month:'short',day:'numeric'});
-}
-function escapeHtml(str){return str.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-function agregarTarea(tarea,id,realizado){
-  const LINE=realizado?'line-through':'', DONE=realizado?'done':'';
-  const item=`<li class="${DONE}" data-id="${id}">
-    <button class="check" data-action="toggle" data-id="${id}" aria-label="Completar"></button>
-    <p class="text ${LINE}">${escapeHtml(tarea)}</p>
-    <button class="delete" data-action="delete" data-id="${id}" aria-label="Eliminar"></button>
-  </li>`;
-  listaTareas.insertAdjacentHTML('beforeend',item);
-}
-function render(){
-  listaTareas.innerHTML='';
-  list.filter(t=>!t.eliminado).forEach(t=>agregarTarea(t.nombre,t.id,t.realizado));
-  updateProgress();
-}
-function updateProgress(){
-  const total=list.filter(t=>!t.eliminado).length;
-  const done=list.filter(t=>!t.eliminado&&t.realizado).length;
-  const pct=total?Math.round(done/total*100):0;
-  progressBar.style.width=`${pct}%`;
-  progressText.textContent=`${pct}% • ${done}/${total}`;
-}
-function addFromInput(){
-  const tarea=inputTarea.value.trim();
-  if(!tarea) return;
-  const id=(crypto.randomUUID?crypto.randomUUID():`${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`);
-  const task={id,nombre:tarea,realizado:false,eliminado:false,createdAt:Date.now()};
-  list.push(task);
-  agregarTarea(task.nombre,task.id,task.realizado);
-  inputTarea.value='';
-  save(); updateProgress();
-}
-function toggleTask(id){
-  const i=list.findIndex(t=>t.id===id); if(i===-1) return;
-  list[i].realizado=!list[i].realizado;
-  const li=listaTareas.querySelector(`li[data-id="${id}"]`);
-  if(li){
-    li.classList.toggle('done',list[i].realizado);
-    li.querySelector('.text').classList.toggle('line-through',list[i].realizado);
-  }
-  save(); updateProgress();
-}
-function deleteTask(id){
-  const i=list.findIndex(t=>t.id===id); if(i===-1) return;
-  list[i].eliminado=true;
-  const li=listaTareas.querySelector(`li[data-id="${id}"]`);
-  if(li){ li.classList.add('remove'); li.addEventListener('animationend',()=>{ li.remove(); updateProgress(); },{once:true}); }
-  save();
-}
-// Eventos
-btnSend.addEventListener('click',addFromInput);
-inputTarea.addEventListener('keyup',e=>{if(e.key==='Enter') addFromInput();});
-listaTareas.addEventListener('click',e=>{
-  const btn=e.target.closest('[data-action]'); if(!btn) return;
-  const id=btn.dataset.id, action=btn.dataset.action;
-  if(action==='toggle') toggleTask(id);
-  if(action==='delete') deleteTask(id);
-});
-// Navegación por días
-datePicker.addEventListener('change',()=>{ CURRENT_KEY=datePicker.value; list=ensureList(); updateFechaLabel(); render(); });
-prevDayBtn.addEventListener('click',()=>{ const d=dateFromKey(CURRENT_KEY); d.setDate(d.getDate()-1); CURRENT_KEY=keyFromDate(d); datePicker.value=CURRENT_KEY; list=ensureList(); updateFechaLabel(); render(); });
-nextDayBtn.addEventListener('click',()=>{ const d=dateFromKey(CURRENT_KEY); d.setDate(d.getDate()+1); CURRENT_KEY=keyFromDate(d); datePicker.value=CURRENT_KEY; list=ensureList(); updateFechaLabel(); render(); });
-// (Opcional) Migración de storage viejo
-(function migrateOld(){
-  const legacy=localStorage.getItem('TODO'); if(!legacy) return;
+// (migración por si venías de V2)
+(function migrateFromV2(){
+  const V2 = localStorage.getItem('TODO_BY_DATE_V2');
+  if(!V2) return;
   try{
-    const arr=JSON.parse(legacy);
-    if(Array.isArray(arr)){
-      const today=keyFromDate(new Date());
-      if(!Array.isArray(STATE[today])) STATE[today]=[];
-      STATE[today].push(...arr.map(x=>({
-        id:(x.id?.toString())||`${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
-        nombre:x.nombre??'Tarea',
-        realizado:!!x.realizado,
-        eliminado:!!x.eliminado,
-        createdAt:Date.now()
-      })));
-      localStorage.removeItem('TODO');
-      localStorage.setItem(STORAGE_KEY,JSON.stringify(STATE));
-      if(CURRENT_KEY===today){ list=STATE[today]; render(); }
+    const old = JSON.parse(V2);
+    if(old && typeof old === 'object'){
+      Object.keys(old).forEach(k=>{
+        const arr = Array.isArray(old[k]) ? old[k] : [];
+        const mapped = arr.map(x=>{
+          const id = (x.id?.toString()) || newId();
+          return {
+            id,
+            origin: x.origin || id,
+            nombre: x.nombre ?? 'Tarea',
+            realizado: !!x.realizado,
+            eliminado: !!x.eliminado,
+            createdAt: x.createdAt || Date.now()
+          };
+        });
+        STATE[k] = Array.isArray(STATE[k]) ? [...STATE[k], ...mapped] : mapped;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+      localStorage.removeItem('TODO_BY_DATE_V2');
     }
   }catch(e){}
 })();
+
+// -------------------- Estado inicial --------------------
+let CURRENT_KEY = keyFromDate(new Date());
+datePicker.value = CURRENT_KEY;
+updateFechaLabel();
+let list = ensureList();
+
+// Traer pendientes de días anteriores al día actual (¡clave!)
+ensureCarryForwardFor(CURRENT_KEY);
+render();
+
+// -------------------- Core --------------------
+function ensureList(){
+  if(!Array.isArray(STATE[CURRENT_KEY])) STATE[CURRENT_KEY] = [];
+  STATE[CURRENT_KEY] = STATE[CURRENT_KEY].map(t=>({
+    ...t,
+    origin: t.origin || t.id,
+    createdAt: t.createdAt || Date.now()
+  }));
+  return STATE[CURRENT_KEY];
+}
+function save(){
+  STATE[CURRENT_KEY] = list;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+}
+function updateFechaLabel(){
+  const d = dateFromKey(CURRENT_KEY);
+  const lbl = d.toLocaleDateString('es-ES',{weekday:'long',month:'short',day:'numeric'});
+  fechaLabel.textContent = lbl.charAt(0).toUpperCase()+lbl.slice(1);
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+
+// --- Arrastre automático verdadero ---
+// Toma el ÚLTIMO estado de cada "origin" en cualquier fecha < currKey.
+// Si está pendiente (no realizado ni eliminado), lo replica en currKey (evitando duplicados).
+function ensureCarryForwardFor(currKey){
+  const prevKeys = Object.keys(STATE).filter(k => k < currKey).sort(); // YYYY-MM-DD ordena bien
+  if(prevKeys.length === 0) return;
+
+  // Normaliza tasks antiguas
+  prevKeys.forEach(k=>{
+    if(Array.isArray(STATE[k])){
+      STATE[k] = STATE[k].map(t=>({...t, origin:t.origin||t.id, createdAt:t.createdAt||Date.now()}));
+    }
+  });
+
+  const latestByOrigin = new Map();
+  prevKeys.forEach(k=>{
+    (STATE[k] || []).forEach(t=>{
+      latestByOrigin.set(t.origin, {...t, _date:k});
+    });
+  });
+
+  list = ensureList();
+  const existingOrigins = new Set(list.filter(t=>!t.eliminado).map(t=>t.origin));
+  let added = 0;
+
+  latestByOrigin.forEach((t, origin)=>{
+    if(t.eliminado) return;
+    if(t.realizado) return;            // solo arrastramos pendientes
+    if(existingOrigins.has(origin)) return; // ya está presente hoy
+    list.push({
+      id: newId(),
+      origin,
+      nombre: t.nombre,
+      realizado: false,
+      eliminado: false,
+      createdAt: Date.now()
+    });
+    added++;
+  });
+
+  if(added) save();
+}
+
+// -------------------- Render con pendientes arriba --------------------
+function getVisibleTasksSorted(){
+  const visible = list.filter(t=>!t.eliminado);
+  return visible.sort((a,b)=>{
+    const byDone = Number(a.realizado) - Number(b.realizado); // 0(pend) primero
+    if(byDone !== 0) return byDone;
+    return (a.createdAt||0) - (b.createdAt||0);
+  });
+}
+function agregarTarea(tarea, id, realizado){
+  const LINE = realizado ? 'line-through' : '';
+  const DONE = realizado ? 'done' : '';
+  listaTareas.insertAdjacentHTML('beforeend', `
+    <li class="${DONE}" data-id="${id}">
+      <button class="check"  data-action="toggle" data-id="${id}" aria-label="Completar"></button>
+      <p class="text ${LINE}">${escapeHtml(tarea)}</p>
+      <button class="delete" data-action="delete" data-id="${id}" aria-label="Eliminar"></button>
+    </li>
+  `);
+}
+function render(){
+  listaTareas.innerHTML = '';
+  getVisibleTasksSorted().forEach(t => agregarTarea(t.nombre, t.id, t.realizado));
+  updateProgress();
+}
+function updateProgress(){
+  const total = list.filter(t=>!t.eliminado).length;
+  const done  = list.filter(t=>!t.eliminado && t.realizado).length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+  progressBar.style.width = `${pct}%`;
+  progressText.textContent = `${pct}% • ${done}/${total}`;
+}
+
+// -------------------- CRUD --------------------
+function addFromInput(){
+  const tarea = inputTarea.value.trim();
+  if(!tarea) return;
+  const id = newId();
+  list.push({ id, origin:id, nombre:tarea, realizado:false, eliminado:false, createdAt:Date.now() });
+  inputTarea.value = '';
+  save(); render();
+}
+function toggleTask(id){
+  const i = list.findIndex(t=>t.id===id); if(i<0) return;
+  list[i].realizado = !list[i].realizado;
+  save(); render();
+}
+function deleteTask(id){
+  const i = list.findIndex(t=>t.id===id); if(i<0) return;
+  list[i].eliminado = true;
+  save(); render();
+}
+
+// -------------------- Eventos --------------------
+btnSend.addEventListener('click', addFromInput);
+inputTarea.addEventListener('keyup', e=>{ if(e.key==='Enter') addFromInput(); });
+listaTareas.addEventListener('click', e=>{
+  const btn = e.target.closest('[data-action]'); if(!btn) return;
+  const {action,id} = btn.dataset;
+  if(action==='toggle') toggleTask(id);
+  if(action==='delete') deleteTask(id);
+});
+
+// Cambio de día: SIEMPRE arrastrar pendientes al entrar a esa fecha
+datePicker.addEventListener('change', ()=>{
+  CURRENT_KEY = datePicker.value;
+  list = ensureList();
+  ensureCarryForwardFor(CURRENT_KEY);
+  updateFechaLabel();
+  render();
+});
+prevDayBtn.addEventListener('click', ()=>{
+  const d = dateFromKey(CURRENT_KEY); d.setDate(d.getDate()-1);
+  CURRENT_KEY = keyFromDate(d);
+  datePicker.value = CURRENT_KEY;
+  list = ensureList();
+  ensureCarryForwardFor(CURRENT_KEY);
+  updateFechaLabel();
+  render();
+});
+nextDayBtn.addEventListener('click', ()=>{
+  const d = dateFromKey(CURRENT_KEY); d.setDate(d.getDate()+1);
+  CURRENT_KEY = keyFromDate(d);
+  datePicker.value = CURRENT_KEY;
+  list = ensureList();
+  ensureCarryForwardFor(CURRENT_KEY);
+  updateFechaLabel();
+  render();
+});
 </script>
+
 </body>
 </html>
 
