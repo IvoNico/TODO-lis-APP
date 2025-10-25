@@ -43,3 +43,24 @@ li.remove{animation:slideOut .22s var(--e) forwards}
 @keyframes slideOut{to{transform:translateX(-12px);opacity:0}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
+/* Modal de felicitación */
+.congrats-overlay{
+  position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.45); opacity:0; pointer-events:none; transition:opacity .2s ease;
+  z-index:50;
+}
+.congrats-overlay.show{ opacity:1; pointer-events:auto; }
+.congrats-card{
+  width:min(420px,90vw); background:#0f172a; border:1px solid #1f2a44; border-radius:16px;
+  padding:20px; text-align:center; transform:translateY(8px); transition:transform .2s ease;
+  box-shadow:0 10px 30px rgba(0,0,0,.4);
+}
+.congrats-overlay.show .congrats-card{ transform:translateY(0); }
+.congrats-card h2{ font-size:1.3rem; margin-bottom:8px; }
+.congrats-card p{ color:#9aa6bf; margin-bottom:14px; }
+.congrats-btn{
+  border:0; padding:10px 14px; border-radius:10px; background:#2563eb; color:#fff; cursor:pointer;
+  transition:transform .15s ease, filter .15s ease;
+}
+.congrats-btn:hover{ transform:translateY(-1px); filter:brightness(1.05); }
+
