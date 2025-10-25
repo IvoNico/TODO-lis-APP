@@ -161,29 +161,49 @@ function updateProgress(){
 
 // ---------- Felicitación ----------
 function ensureCongratsUI(){
-  if($('#congratsOverlay')) return;
-  const el=document.createElement('div');
-  el.id='congratsOverlay';
-  el.className='congrats-overlay';
-  el.innerHTML=`
-    <div class="congrats-card" role="dialog" aria-labelledby="congratsTitle" aria-modal="true">
-      <h2 id="congratsTitle">¡Felicidades! 🎉</h2>
-      <p>Terminaste las tareas del día. Ahora ve a desconectar tu mente.</p>
-      <button id="congratsClose" class="congrats-btn" type="button">Cerrar</button>
-    </div>`;
-  document.body.appendChild(el);
-  $('#congratsClose').addEventListener('click',()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),150); });
-}
-function maybeCelebrate(pct,total){
-  if(pct===100 && total>0){
-    if(!(META[CURRENT_KEY]?.congratsShown)){
-      ensureCongratsUI();
-      META[CURRENT_KEY]={...(META[CURRENT_KEY]||{}),congratsShown:true};
-      saveMeta();
-      requestAnimationFrame(()=>{ $('#congratsOverlay').classList.add('show'); });
-    }
+  // Si ya existe, la reusamos
+  let el = document.getElementById('congratsOverlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'congratsOverlay';
+    el.className = 'congrats-overlay';
+    el.innerHTML = `
+      <div class="congrats-card" role="dialog" aria-labelledby="congratsTitle" aria-modal="true">
+        <h2 id="congratsTitle">¡Felicidades! 🎉</h2>
+        <p>Terminaste las tareas del día. Ahora ve a desconectar tu mente.</p>
+        <button id="congratsClose" class="congrats-btn" type="button">Cerrar</button>
+      </div>`;
+    document.body.appendChild(el);
   }
+
+  const close = () => {
+    el.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    // Espera a que termine la transición y quita del DOM (para que re-animé la próxima vez)
+    setTimeout(() => { if (el && el.parentNode) el.parentNode.removeChild(el); }, 220);
+    window.removeEventListener('keydown', onEsc);
+    el.removeEventListener('click', onBackdrop);
+  };
+
+  const onEsc = (e) => { if (e.key === 'Escape') close(); };
+  const onBackdrop = (e) => {
+    // Cierra al hacer click en cualquier parte del fondo (fuera de la card)
+    if (e.target === el) close();
+  };
+
+  // Eventos de cierre
+  const btn = el.querySelector('#congratsClose');
+  if (btn) btn.onclick = close;
+  el.addEventListener('click', onBackdrop);
+  window.addEventListener('keydown', onEsc);
+
+  // Mostrar (con bloqueo de scroll)
+  requestAnimationFrame(() => {
+    el.classList.add('show');
+    document.body.classList.add('modal-open');
+  });
 }
+
 
 // ---------- CRUD ----------
 function addFromInput(){
