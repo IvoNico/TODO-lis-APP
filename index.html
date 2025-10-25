@@ -79,224 +79,257 @@ li.remove{animation:slideOut .22s var(--e) forwards}
     </section>
   </div>
 
-<script>
-// === Todo con memoria por día + progreso + arrastre automático real + pendientes arriba (V3) ===
+<<script>
+// === Todo V3.1: memoria por día + arrastre real + pendientes arriba + relink histórico + sync futuro + felicidades ===
+const $=(q,ctx=document)=>ctx.querySelector(q);
+const btnSend=$('#enter'), inputTarea=$('#input'), listaTareas=$('#lista');
+const fechaLabel=$('#fecha'), datePicker=$('#datePicker');
+const prevDayBtn=$('#prevDay'), nextDayBtn=$('#nextDay');
+const progressBar=$('#progressBar'), progressText=$('#progressText');
 
-// -------------------- Selectores --------------------
-const $ = (q,ctx=document)=>ctx.querySelector(q);
-const btnSend       = $('#enter');
-const inputTarea    = $('#input');
-const listaTareas   = $('#lista');
-const fechaLabel    = $('#fecha');
-const datePicker    = $('#datePicker');
-const prevDayBtn    = $('#prevDay');
-const nextDayBtn    = $('#nextDay');
-const progressBar   = $('#progressBar');
-const progressText  = $('#progressText');
+const pad=n=>String(n).padStart(2,'0');
+const keyFromDate=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const dateFromKey=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d)};
+const newId=()=> (crypto?.randomUUID?crypto.randomUUID():`${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`);
+const escapeHtml=s=>s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const slugify=s=>(s||'').toString().toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .replace(/\s+/g,' ').trim();
 
-// -------------------- Fechas --------------------
-const pad = n => String(n).padStart(2,'0');
-const keyFromDate = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-const dateFromKey = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
-const newId = () => (crypto?.randomUUID ? crypto.randomUUID()
-                 : `${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`);
+const STORAGE_KEY='TODO_BY_DATE_V3';
+const META_KEY='TODO_META_V1';
+let STATE=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
+let META =JSON.parse(localStorage.getItem(META_KEY)||'{}');
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); }
+function saveMeta(){ localStorage.setItem(META_KEY, JSON.stringify(META)); }
 
-// -------------------- Storage --------------------
-const STORAGE_KEY = 'TODO_BY_DATE_V3';
-let STATE = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-
-// (migración por si venías de V2)
+// --- migración desde V2 (si existiera) ---
 (function migrateFromV2(){
-  const V2 = localStorage.getItem('TODO_BY_DATE_V2');
-  if(!V2) return;
+  const V2=localStorage.getItem('TODO_BY_DATE_V2'); if(!V2) return;
   try{
-    const old = JSON.parse(V2);
-    if(old && typeof old === 'object'){
-      Object.keys(old).forEach(k=>{
-        const arr = Array.isArray(old[k]) ? old[k] : [];
-        const mapped = arr.map(x=>{
-          const id = (x.id?.toString()) || newId();
-          return {
-            id,
-            origin: x.origin || id,
-            nombre: x.nombre ?? 'Tarea',
-            realizado: !!x.realizado,
-            eliminado: !!x.eliminado,
-            createdAt: x.createdAt || Date.now()
-          };
-        });
-        STATE[k] = Array.isArray(STATE[k]) ? [...STATE[k], ...mapped] : mapped;
+    const old=JSON.parse(V2);
+    Object.keys(old||{}).forEach(k=>{
+      const arr=Array.isArray(old[k])?old[k]:[];
+      const mapped=arr.map(x=>{
+        const id=(x.id?.toString())||newId();
+        return { id, origin:x.origin||id, slug: slugify(x.nombre||''), nombre:x.nombre??'Tarea',
+                 realizado:!!x.realizado, eliminado:!!x.eliminado, createdAt:x.createdAt||Date.now() };
       });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
-      localStorage.removeItem('TODO_BY_DATE_V2');
-    }
-  }catch(e){}
+      STATE[k]=Array.isArray(STATE[k])?[...STATE[k],...mapped]:mapped;
+    });
+    saveState(); localStorage.removeItem('TODO_BY_DATE_V2');
+  }catch{}
 })();
 
-// -------------------- Estado inicial --------------------
-let CURRENT_KEY = keyFromDate(new Date());
-datePicker.value = CURRENT_KEY;
-updateFechaLabel();
-let list = ensureList();
+// --- relink histórico por slug (arregla copias viejas sin origin consistente) ---
+(function relinkOrigins(){
+  const keys=Object.keys(STATE).sort();
+  const slugToOrigin=new Map();
+  let changed=false;
+  keys.forEach(k=>{
+    if(!Array.isArray(STATE[k])) return;
+    STATE[k]=STATE[k].map(t=>{
+      const slug = t.slug || slugify(t.nombre||'');
+      let origin = t.origin;
+      if(!origin){
+        origin = slugToOrigin.get(slug) || (t.id || newId());
+        changed=true;
+      }
+      slugToOrigin.set(slug, origin);
+      if(!t.createdAt){ t.createdAt=Date.now(); changed=true; }
+      return {...t, slug, origin};
+    });
+  });
+  if(changed) saveState();
+})();
 
-// Traer pendientes de días anteriores al día actual (¡clave!)
+// --- estado inicial ---
+let CURRENT_KEY=keyFromDate(new Date());
+datePicker.value=CURRENT_KEY;
+updateFechaLabel();
+let list=ensureList();
 ensureCarryForwardFor(CURRENT_KEY);
 render();
 
-// -------------------- Core --------------------
+// === Core ===
 function ensureList(){
-  if(!Array.isArray(STATE[CURRENT_KEY])) STATE[CURRENT_KEY] = [];
-  STATE[CURRENT_KEY] = STATE[CURRENT_KEY].map(t=>({
+  if(!Array.isArray(STATE[CURRENT_KEY])) STATE[CURRENT_KEY]=[];
+  STATE[CURRENT_KEY]=STATE[CURRENT_KEY].map(t=>({
     ...t,
+    slug: t.slug || slugify(t.nombre||''),
     origin: t.origin || t.id,
     createdAt: t.createdAt || Date.now()
   }));
   return STATE[CURRENT_KEY];
 }
-function save(){
-  STATE[CURRENT_KEY] = list;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
-}
 function updateFechaLabel(){
-  const d = dateFromKey(CURRENT_KEY);
-  const lbl = d.toLocaleDateString('es-ES',{weekday:'long',month:'short',day:'numeric'});
-  fechaLabel.textContent = lbl.charAt(0).toUpperCase()+lbl.slice(1);
+  const d=dateFromKey(CURRENT_KEY);
+  const lbl=d.toLocaleDateString('es-ES',{weekday:'long',month:'short',day:'numeric'});
+  fechaLabel.textContent=lbl.charAt(0).toUpperCase()+lbl.slice(1);
 }
-function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 
-// --- Arrastre automático verdadero ---
-// Toma el ÚLTIMO estado de cada "origin" en cualquier fecha < currKey.
-// Si está pendiente (no realizado ni eliminado), lo replica en currKey (evitando duplicados).
+// --- arrastre y limpieza por último estado previo ---
 function ensureCarryForwardFor(currKey){
-  const prevKeys = Object.keys(STATE).filter(k => k < currKey).sort(); // YYYY-MM-DD ordena bien
-  if(prevKeys.length === 0) return;
+  const prevKeys=Object.keys(STATE).filter(k=>k<currKey).sort();
+  if(prevKeys.length===0) return;
 
-  // Normaliza tasks antiguas
+  // normaliza previos
   prevKeys.forEach(k=>{
     if(Array.isArray(STATE[k])){
-      STATE[k] = STATE[k].map(t=>({...t, origin:t.origin||t.id, createdAt:t.createdAt||Date.now()}));
+      STATE[k]=STATE[k].map(t=>({...t, slug: t.slug||slugify(t.nombre||''), origin: t.origin||t.id, createdAt: t.createdAt||Date.now()}));
     }
   });
 
-  const latestByOrigin = new Map();
+  // último estado por origin
+  const latestByOrigin=new Map();
   prevKeys.forEach(k=>{
-    (STATE[k] || []).forEach(t=>{
+    (STATE[k]||[]).forEach(t=>{
       latestByOrigin.set(t.origin, {...t, _date:k});
     });
   });
 
-  list = ensureList();
-  const existingOrigins = new Set(list.filter(t=>!t.eliminado).map(t=>t.origin));
-  let added = 0;
+  list=ensureList();
+  let changed=false;
 
-  latestByOrigin.forEach((t, origin)=>{
-    if(t.eliminado) return;
-    if(t.realizado) return;            // solo arrastramos pendientes
-    if(existingOrigins.has(origin)) return; // ya está presente hoy
-    list.push({
-      id: newId(),
-      origin,
-      nombre: t.nombre,
-      realizado: false,
-      eliminado: false,
-      createdAt: Date.now()
+  // A) limpia en el día actual lo que ya quedó hecho/eliminado previamente
+  list.forEach(t=>{
+    const prev=latestByOrigin.get(t.origin);
+    if(!prev) return;
+    if((prev.realizado || prev.eliminado) && !t.eliminado){
+      t.eliminado=true; changed=true;
+    }
+  });
+
+  // B) agrega pendientes faltantes
+  const existingOrigins=new Set(list.filter(t=>!t.eliminado).map(t=>t.origin));
+  latestByOrigin.forEach((t,origin)=>{
+    if(t.eliminado || t.realizado) return;
+    if(existingOrigins.has(origin)) return;
+    list.push({ id:newId(), origin, slug: t.slug||slugify(t.nombre||''), nombre:t.nombre,
+                realizado:false, eliminado:false, createdAt:Date.now() });
+    changed=true;
+  });
+
+  if(changed) saveState();
+}
+
+// --- al completar, limpiar FUTURO por origin o slug (fallback para datos antiguos) ---
+function propagateCompletionForward(origin, slug){
+  const futureKeys=Object.keys(STATE).filter(k=>k>CURRENT_KEY);
+  let touched=false;
+  futureKeys.forEach(k=>{
+    (STATE[k]||[]).forEach(t=>{
+      const tslug = t.slug || slugify(t.nombre||'');
+      if(t.eliminado) return;
+      if(t.origin===origin || tslug===slug){
+        t.eliminado=true; touched=true;
+      }
     });
-    added++;
   });
-
-  if(added) save();
+  if(touched) saveState();
 }
 
-// -------------------- Render con pendientes arriba --------------------
+// === Render ===
 function getVisibleTasksSorted(){
-  const visible = list.filter(t=>!t.eliminado);
+  const visible=list.filter(t=>!t.eliminado);
   return visible.sort((a,b)=>{
-    const byDone = Number(a.realizado) - Number(b.realizado); // 0(pend) primero
-    if(byDone !== 0) return byDone;
-    return (a.createdAt||0) - (b.createdAt||0);
+    const byDone=Number(a.realizado)-Number(b.realizado); if(byDone!==0) return byDone;
+    return (a.createdAt||0)-(b.createdAt||0);
   });
 }
-function agregarTarea(tarea, id, realizado){
-  const LINE = realizado ? 'line-through' : '';
-  const DONE = realizado ? 'done' : '';
-  listaTareas.insertAdjacentHTML('beforeend', `
+function agregarTarea(tarea,id,realizado){
+  const LINE=realizado?'line-through':'', DONE=realizado?'done':'';
+  listaTareas.insertAdjacentHTML('beforeend',`
     <li class="${DONE}" data-id="${id}">
-      <button class="check"  data-action="toggle" data-id="${id}" aria-label="Completar"></button>
+      <button class="check" data-action="toggle" data-id="${id}" aria-label="Completar"></button>
       <p class="text ${LINE}">${escapeHtml(tarea)}</p>
       <button class="delete" data-action="delete" data-id="${id}" aria-label="Eliminar"></button>
-    </li>
-  `);
+    </li>`);
 }
 function render(){
-  listaTareas.innerHTML = '';
-  getVisibleTasksSorted().forEach(t => agregarTarea(t.nombre, t.id, t.realizado));
+  listaTareas.innerHTML='';
+  getVisibleTasksSorted().forEach(t=>agregarTarea(t.nombre,t.id,t.realizado));
   updateProgress();
 }
 function updateProgress(){
-  const total = list.filter(t=>!t.eliminado).length;
-  const done  = list.filter(t=>!t.eliminado && t.realizado).length;
-  const pct   = total ? Math.round(done/total*100) : 0;
-  progressBar.style.width = `${pct}%`;
-  progressText.textContent = `${pct}% • ${done}/${total}`;
+  const total=list.filter(t=>!t.eliminado).length;
+  const done =list.filter(t=>!t.eliminado && t.realizado).length;
+  const pct  =total?Math.round(done/total*100):0;
+  progressBar.style.width=`${pct}%`;
+  progressText.textContent=`${pct}% • ${done}/${total}`;
+  maybeCelebrate(pct,total);
 }
 
-// -------------------- CRUD --------------------
+// === Felicitación ===
+function ensureCongratsUI(){
+  if($('#congratsOverlay')) return;
+  const el=document.createElement('div');
+  el.id='congratsOverlay';
+  el.className='congrats-overlay';
+  el.innerHTML=`
+    <div class="congrats-card" role="dialog" aria-labelledby="congratsTitle" aria-modal="true">
+      <h2 id="congratsTitle">¡Felicidades! 🎉</h2>
+      <p>Terminaste las tareas del día. Ahora ve a desconectar tu mente.</p>
+      <button id="congratsClose" class="congrats-btn" type="button">Cerrar</button>
+    </div>`;
+  document.body.appendChild(el);
+  $('#congratsClose').addEventListener('click',()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),150); });
+}
+function maybeCelebrate(pct,total){
+  if(pct===100 && total>0){
+    if(!(META[CURRENT_KEY]?.congratsShown)){
+      ensureCongratsUI();
+      META[CURRENT_KEY]={...(META[CURRENT_KEY]||{}),congratsShown:true};
+      saveMeta();
+      requestAnimationFrame(()=>{ $('#congratsOverlay').classList.add('show'); });
+    }
+  }
+}
+
+// === CRUD ===
 function addFromInput(){
-  const tarea = inputTarea.value.trim();
-  if(!tarea) return;
-  const id = newId();
-  list.push({ id, origin:id, nombre:tarea, realizado:false, eliminado:false, createdAt:Date.now() });
-  inputTarea.value = '';
-  save(); render();
+  const tarea=inputTarea.value.trim(); if(!tarea) return;
+  const id=newId(), slug=slugify(tarea);
+  list.push({ id, origin:id, slug, nombre:tarea, realizado:false, eliminado:false, createdAt:Date.now() });
+  inputTarea.value=''; saveState(); render();
 }
 function toggleTask(id){
-  const i = list.findIndex(t=>t.id===id); if(i<0) return;
-  list[i].realizado = !list[i].realizado;
-  save(); render();
+  const i=list.findIndex(t=>t.id===id); if(i<0) return;
+  const wasDone=list[i].realizado;
+  list[i].realizado=!list[i].realizado;
+  saveState();
+  if(!wasDone && list[i].realizado){
+    propagateCompletionForward(list[i].origin, list[i].slug);
+  }
+  render();
 }
 function deleteTask(id){
-  const i = list.findIndex(t=>t.id===id); if(i<0) return;
-  list[i].eliminado = true;
-  save(); render();
+  const i=list.findIndex(t=>t.id===id); if(i<0) return;
+  const {origin,slug}=list[i];
+  list[i].eliminado=true; saveState();
+  propagateCompletionForward(origin, slug);
+  render();
 }
 
-// -------------------- Eventos --------------------
+// === Eventos ===
 btnSend.addEventListener('click', addFromInput);
 inputTarea.addEventListener('keyup', e=>{ if(e.key==='Enter') addFromInput(); });
 listaTareas.addEventListener('click', e=>{
-  const btn = e.target.closest('[data-action]'); if(!btn) return;
-  const {action,id} = btn.dataset;
+  const btn=e.target.closest('[data-action]'); if(!btn) return;
+  const {action,id}=btn.dataset;
   if(action==='toggle') toggleTask(id);
   if(action==='delete') deleteTask(id);
 });
-
-// Cambio de día: SIEMPRE arrastrar pendientes al entrar a esa fecha
-datePicker.addEventListener('change', ()=>{
-  CURRENT_KEY = datePicker.value;
-  list = ensureList();
-  ensureCarryForwardFor(CURRENT_KEY);
-  updateFechaLabel();
-  render();
-});
-prevDayBtn.addEventListener('click', ()=>{
-  const d = dateFromKey(CURRENT_KEY); d.setDate(d.getDate()-1);
-  CURRENT_KEY = keyFromDate(d);
-  datePicker.value = CURRENT_KEY;
-  list = ensureList();
-  ensureCarryForwardFor(CURRENT_KEY);
-  updateFechaLabel();
-  render();
-});
-nextDayBtn.addEventListener('click', ()=>{
-  const d = dateFromKey(CURRENT_KEY); d.setDate(d.getDate()+1);
-  CURRENT_KEY = keyFromDate(d);
-  datePicker.value = CURRENT_KEY;
-  list = ensureList();
-  ensureCarryForwardFor(CURRENT_KEY);
-  updateFechaLabel();
-  render();
-});
+function goTo(key){
+  CURRENT_KEY=key; datePicker.value=key;
+  list=ensureList(); ensureCarryForwardFor(CURRENT_KEY);
+  updateFechaLabel(); render();
+}
+datePicker.addEventListener('change', ()=> goTo(datePicker.value));
+prevDayBtn.addEventListener('click', ()=>{ const d=dateFromKey(CURRENT_KEY); d.setDate(d.getDate()-1); goTo(keyFromDate(d)); });
+nextDayBtn.addEventListener('click', ()=>{ const d=dateFromKey(CURRENT_KEY); d.setDate(d.getDate()+1); goTo(keyFromDate(d)); });
 </script>
+
 
 </body>
 </html>
