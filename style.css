@@ -1,235 +1,88 @@
-/* ===== Minimal Black + Blue To-Do ===== */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
 :root{
-  /* Palette */
-  --bg: #0b0d12;
-  --bg-2: #0e1422;
-  --card: #0f172a;       /* slate-900 */
-  --stroke: #1f2a44;     /* navy stroke */
-  --text: #e5e7eb;       /* zinc-200 */
-  --muted: #9aa6bf;      /* slate-400/300 */
-  --blue: #2563eb;       /* blue-600 */
-  --blue-500: #3b82f6;   /* hover */
-  --white: #e5e7eb;
-
-  /* Motion */
-  --dur: .28s;
-  --e: cubic-bezier(.2,.8,.2,1);
+  --bg: #0b0d12; --card:#0f172a; --stroke:#1f2a44;
+  --text:#e5e7eb; --muted:#9aa6bf;
+  --blue:#2563eb; --blue-500:#3b82f6;
+  --e:cubic-bezier(.2,.8,.2,1);
 }
 
-/* Layout / base */
-html, body { height: 100%; }
-body{
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-  background: radial-gradient(1200px 800px at 70% -10%, #111a2d 0%, transparent 60%) , linear-gradient(#0b0d12, #0b0d12);
-  color: var(--text);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+body{ background:#0b0d12; color:var(--text); font-family:Inter,system-ui; }
 
-.container{
-  width: min(420px, 90vw);
-  margin: 48px auto;
-}
+.container{ width:min(420px,90vw); margin:40px auto; }
 
-/* PERFIL */
-.perfil h1{
-  font-weight: 700;
-  letter-spacing: .2px;
-  font-size: 1.5rem;
-  margin-bottom: 6px;
-}
-.perfil span{ color: var(--muted); display: inline-block; margin-bottom: 8px; }
-#fecha{ color: var(--muted); opacity: .9; padding: 8px 0 0; }
+.perfil h1{ font-size:1.5rem; margin-bottom:6px; }
+#fecha{ color:var(--muted); display:block; margin-bottom:8px; }
 
-/* AGREGAR TAREA */
+.date-controls{ display:flex; gap:8px; align-items:center; margin:8px 0 14px; }
+.date-controls input[type="date"]{
+  background:var(--card); border:1px solid var(--stroke);
+  color:var(--text); padding:8px 10px; border-radius:10px; outline:none;
+}
+.icon-btn{
+  width:40px; height:40px; border-radius:10px; border:1px solid var(--stroke);
+  background:var(--card); color:var(--text); cursor:pointer;
+  transition:transform .2s var(--e), border-color .2s var(--e);
+}
+.icon-btn:hover{ transform:translateY(-1px); border-color:var(--blue); }
+
+.progress{
+  height:10px; background:var(--card); border:1px solid var(--stroke);
+  border-radius:999px; overflow:hidden;
+}
+.progress-bar{ height:100%; width:0%; background:linear-gradient(90deg,var(--blue),#60a5fa); transition:width .3s var(--e); }
+.progress-meta{ color:var(--muted); font-size:.85rem; margin:6px 0 14px; }
+
 .agregarTareas{
-  margin: 24px 0 28px;
-  display: flex; align-items: center; gap: 10px;
-  background: var(--card);
-  border: 1px solid var(--stroke);
-  border-radius: 14px;
-  padding: 8px;
-  transition: box-shadow var(--dur) var(--e), border-color var(--dur) var(--e);
-}
-.agregarTareas:focus-within{
-  border-color: var(--blue);
-  box-shadow: 0 0 0 6px color-mix(in srgb, var(--blue) 14%, transparent);
+  display:flex; gap:10px; align-items:center; padding:8px;
+  background:var(--card); border:1px solid var(--stroke); border-radius:14px;
 }
 .agregarTareas input{
-  flex: 1 1 auto;
-  height: 44px;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  padding: 0 12px 0 10px;
-  outline: none;
-  font-size: 0.98rem;
+  flex:1; height:44px; background:transparent; border:0; color:var(--text); padding:0 12px;
 }
-.agregarTareas input::placeholder{ color: var(--muted); }
-
-.agregarTareas span,
-.agregarTareas .add-btn{
-  /* botón + */
-  width: 44px; height: 44px;
-  border-radius: 12px;
-  display: grid; place-items: center;
-  background: var(--blue);
-  color: #fff;
-  font-size: 28px; line-height: 0;
-  border: 0;
-  cursor: pointer;
-  transition: transform var(--dur) var(--e), background var(--dur) var(--e), box-shadow var(--dur) var(--e);
+.add-btn{
+  width:44px; height:44px; border-radius:12px; border:0; background:var(--blue); color:#fff;
+  font-size:28px; line-height:0; cursor:pointer; transition:transform .2s var(--e), background .2s var(--e);
 }
-.agregarTareas span:hover{ background: var(--blue-500); transform: translateY(-1px); }
-.agregarTareas span:active{ transform: translateY(0) scale(.98); }
-/* Si tu HTML no pone el símbolo +, lo inyectamos: */
-.agregarTareas span::before{ content: "+"; transform: translateY(-1px); }
+.add-btn:hover{ background:var(--blue-500); transform:translateY(-1px); }
 
-/* SECCION TAREAS */
-.seccionTareas h3{ color: var(--text); margin-bottom: 10px; font-weight: 600; }
-
-.seccionTareas > ul{
-  list-style: none;
-  display: grid;
-  gap: 10px;
-}
-
-/* Tarjeta de tarea */
+.seccionTareas > ul{ list-style:none; display:grid; gap:10px; }
 .seccionTareas li{
-  position: relative;
-  display: grid;
-  grid-template-columns: 28px 1fr auto;
-  align-items: center;
-  gap: 12px;
-  background: linear-gradient(180deg, #0b1324, #0b0f1a);
-  border: 1px solid var(--stroke);
-  border-radius: 14px;
-  padding: 12px 12px;
-  transition: transform var(--dur) var(--e), border-color var(--dur) var(--e), background var(--dur) var(--e), opacity var(--dur) var(--e);
-  will-change: transform, opacity;
-  overflow: hidden;
+  display:grid; grid-template-columns:28px 1fr auto; align-items:center; gap:12px;
+  padding:12px; border:1px solid var(--stroke); border-radius:14px; background:linear-gradient(180deg,#0b1324,#0b0f1a);
+  transition:border-color .2s var(--e), transform .2s var(--e), opacity .2s var(--e);
 }
-.seccionTareas li:hover{ border-color: color-mix(in srgb, var(--blue) 35%, var(--stroke)); transform: translateY(-1px); }
+.seccionTareas li:hover{ border-color:color-mix(in srgb, var(--blue) 35%, var(--stroke)); transform:translateY(-1px); }
+.seccionTareas p{ font-size:.98rem; line-height:1.3; }
 
-.seccionTareas > ul p{
-  font-size: 0.98rem;
-  color: var(--text);
-  line-height: 1.3;
-  position: relative;
+.check, .delete{
+  width:28px; height:28px; border-radius:8px; display:grid; place-items:center; cursor:pointer; position:relative; border:0; background:transparent;
 }
 
-/* Botones (primer span = check, último span = delete) */
-.seccionTareas span{ width: 28px; height: 28px; display: grid; place-items: center; cursor: pointer; user-select: none; }
-
-/* CHECK minimal */
-.seccionTareas .check,
-.seccionTareas li > span:first-child{
-  border: 2px solid #334155; border-radius: 8px;
-  transition: all var(--dur) var(--e);
-  position: relative;
-}
-.seccionTareas .check::after,
-.seccionTareas li > span:first-child::after{
-  /* tilde */
-  content: "";
-  width: 12px; height: 6px;
-  border: 2px solid transparent;
-  border-top: 0; border-right: 0;
-  transform: rotate(-45deg) scale(.6);
-  transform-origin: center;
-  position: absolute; top: 7px; left: 6px;
-  transition: transform var(--dur) var(--e), border-color var(--dur) var(--e), opacity var(--dur) var(--e);
-  opacity: 0;
+/* Check minimal */
+.check{ border:2px solid #334155; }
+.check::after{
+  content:""; position:absolute; width:12px; height:6px; border:2px solid transparent; border-top:0; border-right:0;
+  transform:rotate(-45deg) scale(.6); top:7px; left:6px; opacity:0; transition:transform .28s var(--e), opacity .28s var(--e), border-color .28s var(--e);
 }
 
-/* DELETE minimal (X) */
-.seccionTareas .delete,
-.seccionTareas li > span:last-child{
-  width: 28px; height: 28px; border-radius: 8px;
-  border: 1px dashed transparent;
-  opacity: .7;
-  transition: opacity var(--dur) var(--e), background var(--dur) var(--e), border-color var(--dur) var(--e);
+/* Delete X */
+.delete{ opacity:.75; }
+.delete::before,.delete::after{
+  content:""; position:absolute; width:12px; height:2px; background:#9aa6bf; top:13px; left:8px; border-radius:1px;
 }
-.seccionTareas .delete:hover,
-.seccionTareas li > span:last-child:hover{
-  opacity: 1; background: #0c1322; border-color: #1d2742;
-}
-.seccionTareas .delete::before,
-.seccionTareas .delete::after,
-.seccionTareas li > span:last-child::before,
-.seccionTareas li > span:last-child::after{
-  content: "";
-  position: absolute; width: 12px; height: 2px; background: #9aa6bf;
-  top: 13px; left: 8px; border-radius: 1px;
-  transition: background var(--dur) var(--e);
-}
-.seccionTareas .delete::before,
-.seccionTareas li > span:last-child::before{ transform: rotate(45deg); }
-.seccionTareas .delete::after,
-.seccionTareas li > span:last-child::after{ transform: rotate(-45deg); }
+.delete::before{ transform:rotate(45deg); } .delete::after{ transform:rotate(-45deg); }
+.delete:hover{ opacity:1; }
 
-/* ESTADO: completada (aplica .done al <li>) */
-.seccionTareas li.done{
-  border-color: color-mix(in srgb, var(--blue) 45%, var(--stroke));
-  background: linear-gradient(180deg, #0b1326, #09101c);
-}
-.seccionTareas li.done > p{ color: var(--muted); }
+/* Estado done */
+li.done .check{ background:var(--blue); border-color:var(--blue); box-shadow:0 0 0 6px color-mix(in srgb, var(--blue) 16%, transparent); }
+li.done .check::after{ border-color:#fff; opacity:1; transform:rotate(-45deg) scale(1); }
+.line-through{ text-decoration:line-through; color:var(--muted); }
+li.remove{ animation:slideOut .22s var(--e) forwards; }
+@keyframes slideOut{ to{ transform:translateX(-12px); opacity:0; } }
 
-/* Línea tachado ANIMADA */
-.seccionTareas li.done > p::after{
-  content: "";
-  position: absolute; left: 0; right: 0; top: 54%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--blue), transparent);
-  transform: scaleX(0);
-  transform-origin: left;
-  animation: strike .42s var(--e) forwards;
-}
-@keyframes strike { to { transform: scaleX(1); } }
-
-/* Check animado + ripple */
-.seccionTareas li.done .check,
-.seccionTareas li.done > span:first-child{
-  background: var(--blue);
-  border-color: var(--blue);
-  box-shadow: 0 0 0 6px color-mix(in srgb, var(--blue) 16%, transparent);
-}
-.seccionTareas li.done .check::after,
-.seccionTareas li.done > span:first-child::after{
-  border-color: #fff;
-  opacity: 1;
-  transform: rotate(-45deg) scale(1);
-}
-
-/* Pop + onda sutil al completar */
-.seccionTareas li.done::before{
-  content:"";
-  position: absolute; left: 16px; width: 10px; height: 10px;
-  border-radius: 999px; background: var(--blue);
-  filter: blur(.5px);
-  transform: translateY(-50%) scale(1);
-  top: 50%;
-  animation: ripple .6s ease-out forwards;
-}
-@keyframes ripple{
-  to{ transform: translateY(-50%) scale(14); opacity: 0; }
-}
-
-/* Animación al borrar */
-.seccionTareas li.remove{
-  animation: slideOut .22s var(--e) forwards;
-}
-@keyframes slideOut{
-  to { transform: translateX(-12px); opacity: 0; }
-}
-
-/* Accesibilidad: menos movimiento */
+/* Menos movimiento */
 @media (prefers-reduced-motion: reduce){
-  * { animation: none !important; transition: none !important; }
-  .agregarTareas:focus-within{ box-shadow: none; }
+  *{ animation:none !important; transition:none !important; }
 }
 
